@@ -1,5 +1,5 @@
 ## Cross-validation for penalized quantile regression
-cv.qr <- function(X,Y,lambdas.qr,n){
+cv_qr <- function(X,Y,lambdas.qr,n){
   it <- length(lambdas.qr)
   err <- rep(0,it)
   folds <- floor(n/5)
@@ -62,11 +62,11 @@ pars_init <- function(n, p){
 }
 
 
-debiasedLAD <- function(n, p, X, Y, lambdas.qr, nu){
+debiased_LAD <- function(n, p, X, Y, lambdas.qr, nu){
   Theta <- nodewise(X, p, n, sqrt(log(p)/n))
   
   # LAD estimator
-  lam <- lambdas.qr[which.min(cv.qr(X,Y,lambdas.qr,n))]
+  lam <- lambdas_qr[which.min(cv_qr(X,Y,lambdas.qr,n))]
   
   f <- rq.fit.lasso(X, Y, tau = 0.5, beta = .9995, eps = 1e-06)
   beta.hat <- f$coefficients

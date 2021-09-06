@@ -7,7 +7,7 @@ p <- 10
 iter <- 500
 length <- coverage <- rep(0, p)
 estVar <- est <- matrix(0, nrow = iter, ncol = p)
-lambdas.qr <- seq(10, 60, 2)
+lambdas_qr <- seq(10, 60, 2)
 pars <- pars_init(n, p)
 Sigma0 <- pars$Sigma0
 beta <- pars$beta
@@ -28,7 +28,7 @@ for(i in 1:iter){
   Y <- X %*% beta + eps
   
   ## Compute de-biased LAD estimator 
-  out <- debiasedLAD(n, p, X, Y, lambdas.qr, nu)
+  out <- debiased_LAD(n, p, X, Y, lambdas_qr, nu)
   UE = out$UE
   LE = out$LE
   beta.ds = out$beta.ds
