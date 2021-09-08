@@ -1,16 +1,42 @@
-## Cross-validation for penalized quantile regression
-cv_qr <- function(X,Y,lambdas.qr,n){
-  it <- length(lambdas.qr)
-  err <- rep(0,it)
-  folds <- floor(n/5)
-  fm <- matrix(sample(1:n),nrow=folds)
-  for(j in 1:it){
-    for(i in folds){
-      fit <- rq.fit.lasso(X[-fm[i,],], Y[-fm[i,]], tau = 0.5, lambda = lambdas.qr[j], beta = .9995, eps = 1e-06)
-      err[j] <- err[j] +  sum(abs(Y[fm[i,]] - X[fm[i,],]%*% fit$coefficients))/n #+ lambdas.qr[j]*sum(abs(fit$coefficients))
-    }
-  }
-  lambdas.qr[which.min(err)]
+## Initialize model parameters
+pars_init <- function(n, p){
+  
+  diag.value <- 1
+  rho <- 0.3
+  lower <- rbind(rep(0,p), (diag(p))[-p,])
+  upper <- t(lower)
+  Theta0 <- diag.value * diag(p) + rho * (upper + lower)
+  Sigma0 <- solve(Theta0)
+  
+  # the regression vector
+  beta <- rep(0, p)
+  beta[1:3] <- c(1, 1, 1)
+  
+  list(Sigma0 = Sigma0, beta = beta)
+}
+
+## Compute the de-biased LAD estimator 
+debiased_LAD <- function(n, p, X, Y, lambdas.qr, nu){
+  Theta <- nodewise(X, p, n, sqrt(log(p)/n))
+  
+  # LAD estimator
+  lam <- lambdas_qr[which.min(cv_qr(X,Y,lambdas.qr,n))]
+  
+  f <- rq.fit.lasso(X, Y, tau = 0.5, beta = .9995, eps = 1e-06)
+  beta.hat <- f$coefficients
+  lamZ <-  t(X) %*% sign(Y - X %*% beta.hat)  /n
+  
+  f0 <- dt(0, nu) * sqrt(nu / (nu-2))
+  beta.ds <- beta.hat +  1/2/ f0 * Theta %*% (lamZ)  
+  
+  # Compute confidence intervals 
+  sigma <-  1/4/f0^2 * diag(Theta)
+  rad <- qnorm(0.975) * sqrt(sigma) / sqrt(n)
+  LE <- beta.ds - rad 
+  UE <- beta.ds + rad
+  
+  list(LE = LE, UE = UE, sigma = sigma, 
+       beta.ds = beta.ds, Theta = Theta, f0 = f0)
 }
 
 ## Approximate inverse of the matrix t(X)%*%X/n 
@@ -44,44 +70,17 @@ his <- function(n,est,beta,vari,expr,j,nc,labe){
 }
 
 
-pars_init <- function(n, p){
-  
-  diag.value <- 1
-  rho <- 0.3
-  lower <- rbind(rep(0,p), (diag(p))[-p,])
-  upper <- t(lower)
-  Theta0 <- diag.value * diag(p) + rho * (upper + lower)
-  Sigma0 <- solve(Theta0)
-  
-  # the regression vector
-  beta <- rep(0, p)
-  beta[1:3] <- c(1, 1, 1)
-  
-  list(Sigma0 = Sigma0, beta = beta)
-  
-}
-
-
-debiased_LAD <- function(n, p, X, Y, lambdas.qr, nu){
-  Theta <- nodewise(X, p, n, sqrt(log(p)/n))
-  
-  # LAD estimator
-  lam <- lambdas_qr[which.min(cv_qr(X,Y,lambdas.qr,n))]
-  
-  f <- rq.fit.lasso(X, Y, tau = 0.5, beta = .9995, eps = 1e-06)
-  beta.hat <- f$coefficients
-  lamZ <-  t(X) %*% sign(Y - X %*% beta.hat)  /n
-  
-  f0 <- dt(0, nu) * sqrt(nu / (nu-2))
-  beta.ds <- beta.hat +  1/2/ f0 * Theta %*% (lamZ)  
-  
-  # Compute confidence intervals 
-  sigma <-  1/4/f0^2 * diag(Theta)
-  rad <- qnorm(0.975) * sqrt(sigma) / sqrt(n)
-  LE <- beta.ds - rad 
-  UE <- beta.ds + rad
-  
-  list(LE = LE, UE = UE, sigma = sigma, 
-       beta.ds = beta.ds, Theta = Theta, f0 = f0)
-  
+## Cross-validation for penalized quantile regression
+cv_qr <- function(X,Y,lambdas.qr,n){
+  it <- length(lambdas.qr)
+  err <- rep(0,it)
+  folds <- floor(n/5)
+  fm <- matrix(sample(1:n),nrow=folds)
+  for(j in 1:it){
+    for(i in folds){
+      fit <- rq.fit.lasso(X[-fm[i,],], Y[-fm[i,]], tau = 0.5, lambda = lambdas.qr[j], beta = .9995, eps = 1e-06)
+      err[j] <- err[j] +  sum(abs(Y[fm[i,]] - X[fm[i,],]%*% fit$coefficients))/n #+ lambdas.qr[j]*sum(abs(fit$coefficients))
+    }
+  }
+  lambdas.qr[which.min(err)]
 }
